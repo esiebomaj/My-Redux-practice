@@ -39,7 +39,7 @@ describe("bugSlice", () => {
   });
 
   describe("loadbugs", () => {
-    it("cache should not load bugs", async () => {
+    it("load bugs from cache if time within 10mins", async () => {
       fakeAxios.onGet("/bugs").reply(200, [{ id: 1 }, { id: 1 }]);
 
       await store.dispatch(loadBugs());
@@ -78,6 +78,28 @@ describe("bugSlice", () => {
     });
   });
 
+  describe("addBug", () => {
+    it("should add bug to store if saved to server", async () => {
+      const bug = { description: "a" };
+      const serverBug = { ...bug, id: 1 };
+      fakeAxios.onPost("/bugs").reply(200, serverBug);
+
+      await store.dispatch(addBug(bug));
+
+      expect(store.getState().entities.bugs.list).toHaveLength(1);
+      expect(store.getState().entities.bugs.list).toContainEqual(serverBug);
+    });
+
+    it("should not add bug to store if not saved to server", async () => {
+      const bug = { description: "a" };
+      fakeAxios.onPost("/bugs").reply(500);
+
+      await store.dispatch(addBug(bug));
+
+      expect(store.getState().entities.bugs.list).toHaveLength(0);
+    });
+  });
+
   it("should handle resolve bugs", async () => {
     fakeAxios.onPatch("/bugs/1").reply(200, { id: 1, resolved: true });
     fakeAxios.onPost("/bugs").reply(200, { id: 1 });
@@ -86,26 +108,6 @@ describe("bugSlice", () => {
     await store.dispatch(resolveBug(1));
 
     expect(store.getState().entities.bugs.list[0].resolved).toEqual(true);
-  });
-
-  it("should add bug to store if saved to server", async () => {
-    const bug = { description: "a" };
-    const serverBug = { ...bug, id: 1 };
-    fakeAxios.onPost("/bugs").reply(200, serverBug);
-
-    await store.dispatch(addBug(bug));
-
-    expect(store.getState().entities.bugs.list).toHaveLength(1);
-    expect(store.getState().entities.bugs.list).toContainEqual(serverBug);
-  });
-
-  it("should not add bug to store if not saved to server", async () => {
-    const bug = { description: "a" };
-    fakeAxios.onPost("/bugs").reply(500);
-
-    await store.dispatch(addBug(bug));
-
-    expect(store.getState().entities.bugs.list).toHaveLength(0);
   });
 
   describe("selectors", () => {
